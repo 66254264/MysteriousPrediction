@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-box {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background: #4CAF50; color: white; }
+        .error { background: #f44336; color: white; }
+        .pending { background: #FFC107; color: black; }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0b7dda;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 连接诊断工具</h1>
+    
+    <div class="test-box">
+        <h2>1. 后端健康检查</h2>
+        <p>测试后端服务是否运行</p>
+        <button onclick="testBackendHealth()">测试后端</button>
+        <div id="backend-result"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>2. API连接测试</h2>
+        <p>测试前端到后端的API连接</p>
+        <button onclick="testApiConnection()">测试API</button>
+        <div id="api-result"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>3. CORS测试</h2>
+        <p>测试跨域资源共享配置</p>
+        <button onclick="testCORS()">测试CORS</button>
+        <div id="cors-result"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>4. 网络状态</h2>
+        <p>检查浏览器网络状态</p>
+        <button onclick="checkNetworkStatus()">检查网络</button>
+        <div id="network-result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        async function testBackendHealth() {
+            const resultDiv = document.getElementById('backend-result');
+            resultDiv.innerHTML = '<p><span class="status pending">测试中...</span></p>';
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch(`${API_URL}/system/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const duration = Date.now() - startTime;
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p><span class="status success">✓ 成功</span></p>
+                        <p>响应时间: ${duration}ms</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p><span class="status error">✗ 失败</span></p>
+                        <p>状态码: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p><span class="status error">✗ 错误</span></p>
+                    <p>错误信息: ${error.message}</p>
+                    <p>可能原因:</p>
+                    <ul>
+                        <li>后端服务未启动（运行 <code>npm run dev</code> 在 backend 目录）</li>
+                        <li>端口5000被占用</li>
+                        <li>防火墙阻止连接</li>
+                    </ul>
+                `;
+            }
+        }
+
+        async function testApiConnection() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<p><span class="status pending">测试中...</span></p>';
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch(`${API_URL}/`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const duration = Date.now() - startTime;
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p><span class="status success">✓ API连接正常</span></p>
+                        <p>响应时间: ${duration}ms</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p><span class="status error">✗ API连接失败</span></p>
+                        <p>状态码: ${response.status}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p><span class="status error">✗ 连接错误</span></p>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        async function testCORS() {
+            const resultDiv = document.getElementById('cors-result');
+            resultDiv.innerHTML = '<p><span class="status pending">测试中...</span></p>';
+            
+            try {
+                const response = await fetch(`${API_URL}/system/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                };
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p><span class="status success">✓ CORS配置正常</span></p>
+                        <p>CORS Headers:</p>
+                        <pre>${JSON.stringify(corsHeaders, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p><span class="status error">✗ CORS可能有问题</span></p>
+                        <p>检查后端 .env 文件中的 CORS_ORIGIN 配置</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p><span class="status error">✗ CORS错误</span></p>
+                    <p>${error.message}</p>
+                    <p>确保后端 CORS_ORIGIN 包含当前域名</p>
+                `;
+            }
+        }
+
+        function checkNetworkStatus() {
+            const resultDiv = document.getElementById('network-result');
+            
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            
+            const status = {
+                online: navigator.onLine,
+                effectiveType: connection?.effectiveType || 'unknown',
+                downlink: connection?.downlink || 'unknown',
+                rtt: connection?.rtt || 'unknown',
+                saveData: connection?.saveData || false
+            };
+            
+            const statusClass = status.online ? 'success' : 'error';
+            const statusText = status.online ? '✓ 在线' : '✗ 离线';
+            
+            resultDiv.innerHTML = `
+                <p><span class="status ${statusClass}">${statusText}</span></p>
+                <p>网络信息:</p>
+                <pre>${JSON.stringify(status, null, 2)}</pre>
+            `;
+        }
+
+        // 自动运行所有测试
+        window.addEventListener('load', () => {
+            console.log('页面加载完成，开始自动测试...');
+            setTimeout(() => {
+                testBackendHealth();
+                setTimeout(() => testApiConnection(), 500);
+                setTimeout(() => testCORS(), 1000);
+                setTimeout(() => checkNetworkStatus(), 1500);
+            }, 500);
+        });
+    </script>
+</body>
+</html>
